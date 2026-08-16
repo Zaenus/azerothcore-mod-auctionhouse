@@ -1,7 +1,7 @@
 -- Auction House Bot - Price History Table
 -- Stores daily price snapshots per item per faction
 
-CREATE TABLE `auctionhouse_price_history` (
+CREATE TABLE IF NOT EXISTS `auctionhouse_price_history` (
   `item_entry` INT UNSIGNED NOT NULL,
   `faction` TINYINT UNSIGNED NOT NULL COMMENT '0=Alliance, 1=Horde, 2=Neutral',
   `min_buyout` BIGINT UNSIGNED NOT NULL DEFAULT 0,

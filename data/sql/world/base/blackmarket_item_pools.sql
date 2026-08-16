@@ -1,7 +1,7 @@
 -- Black Market Auction House - Item Pools Table
 -- Defines weighted item pools for BMAH rotations
 
-CREATE TABLE `blackmarket_item_pools` (
+CREATE TABLE IF NOT EXISTS `blackmarket_item_pools` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `category` VARCHAR(50) NOT NULL COMMENT 'Category: Mounts, Pets, Transmog, Gear, TCG, Misc',
   `item_entry` INT UNSIGNED NOT NULL,

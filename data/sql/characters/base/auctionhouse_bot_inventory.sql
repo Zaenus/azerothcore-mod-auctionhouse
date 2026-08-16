@@ -1,7 +1,7 @@
 -- Auction House Bot - Bot Inventory Table
 -- Tracks items owned by AH bots
 
-CREATE TABLE `auctionhouse_bot_inventory` (
+CREATE TABLE IF NOT EXISTS `auctionhouse_bot_inventory` (
   `bot_guid` BIGINT UNSIGNED NOT NULL,
   `item_guid` BIGINT UNSIGNED NOT NULL,
   `item_entry` INT UNSIGNED NOT NULL,

@@ -1,6 +1,6 @@
 -- Black Market Auction House - Active Auctions Table
 
-CREATE TABLE `blackmarket_auctions` (
+CREATE TABLE IF NOT EXISTS `blackmarket_auctions` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `item_entry` INT UNSIGNED NOT NULL,
   `item_guid` BIGINT UNSIGNED NOT NULL,

@@ -28,7 +28,7 @@ BlackMarketItemPool::BlackMarketItemPool() : _rng(std::random_device{}())
 {
 }
 
-void BlackMarketItemPool::LoadFromDB()
+void BlackMarketItemPool::LoadFromDB() const
 {
     // Load from blackmarket_item_pools table
     // If table is empty, fall back to config
@@ -67,7 +67,7 @@ void BlackMarketItemPool::LoadFromDB()
     LoadFromConfig();
 }
 
-void BlackMarketItemPool::LoadFromConfig()
+void BlackMarketItemPool::LoadFromConfig() const
 {
     // Parse config strings for each pool category
     struct PoolConfig
@@ -142,8 +142,22 @@ void BlackMarketItemPool::LoadFromConfig()
     }
 }
 
-std::vector<BMAHAuctionEntry> BlackMarketItemPool::SelectItemsForRotation(uint32 maxItems, uint32 rotationId)
+void BlackMarketItemPool::EnsureLoaded() const
 {
+    if (_loaded)
+        return;
+
+    std::lock_guard lock(_loadLock);
+    if (_loaded)
+        return;
+
+    LoadFromDB();
+    _loaded = true;
+}
+
+std::vector<BMAHAuctionEntry> BlackMarketItemPool::SelectItemsForRotation(uint32 maxItems, uint32 rotationId) const
+{
+    EnsureLoaded();
     std::vector<BMAHAuctionEntry> selected;
 
     // Collect all enabled items with weights

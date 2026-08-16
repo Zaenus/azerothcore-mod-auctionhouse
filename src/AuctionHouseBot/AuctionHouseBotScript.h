@@ -46,10 +46,9 @@ class AuctionHouseBotWorldScript : public WorldScript
 {
 public:
     AuctionHouseBotWorldScript() : WorldScript("AuctionHouseBotWorldScript",
-        std::vector<uint16>{WORLDHOOK_ON_UPDATE, WORLDHOOK_ON_BEFORE_CONFIG_LOAD}) {}
+        std::vector<uint16>{WORLDHOOK_ON_UPDATE}) {}
 
     void OnUpdate(uint32 diff) override;
-    void OnBeforeConfigLoad(bool reload) override;
 };
 
 #endif

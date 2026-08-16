@@ -43,12 +43,19 @@ public:
 
     void LoadFromDB();
     void LoadFromConfig();
+    void EnsureLoaded();
 
-    std::vector<BMAHAuctionEntry> SelectItemsForRotation(uint32 maxItems, uint32 rotationId);
+    std::vector<BMAHAuctionEntry> SelectItemsForRotation(uint32 maxItems, uint32 rotationId) const;
 
 private:
-    std::map<std::string, std::vector<PoolItem>> _pools;
+    mutable std::map<std::string, std::vector<PoolItem>> _pools;
     mutable std::mt19937 _rng;
+    mutable std::mutex _loadLock;
+    mutable bool _loaded = false;
+
+    void EnsureLoaded() const;
+    void LoadFromDB() const;
+    void LoadFromConfig() const;
 
     uint64 CalculateStartBid(const PoolItem& item) const;
     uint32 SelectRandomDuration() const;

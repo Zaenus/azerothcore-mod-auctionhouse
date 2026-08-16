@@ -18,11 +18,8 @@
 #include "AuctionHouseConfig.h"
 #include "Config.h"
 
-void AuctionHouseConfig::Initialize(bool reload)
+void AuctionHouseConfig::Initialize(bool /*reload*/)
 {
-    if (reload)
-        return;
-
     LoadAHBotConfig();
     LoadBMAHConfig();
 }

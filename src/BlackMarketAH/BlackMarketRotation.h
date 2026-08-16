@@ -31,6 +31,7 @@ public:
     ~BlackMarketRotation() = default;
 
     void Initialize();
+    void EnsureLoaded();
     bool Update(uint32 diff);
     bool IsRotationDue() const;
     uint32 StartNewRotation();
@@ -48,6 +49,8 @@ private:
     uint32 _currentRotationId = 0;
     time_t _nextRotationTime = 0;
     uint32 _updateTimer = 0;
+    mutable std::mutex _loadLock;
+    mutable bool _loaded = false;
 };
 
 #endif

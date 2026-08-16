@@ -42,12 +42,27 @@ AuctionHouseBot::~AuctionHouseBot()
 void AuctionHouseBot::Initialize()
 {
     _gold = sAuctionHouseConfig.GetStartingGoldPerBot();
-    LoadBotData();
 
     _buyStrategy = std::make_unique<BuyStrategy>(this);
     _sellStrategy = std::make_unique<SellStrategy>(this);
 
     LOG_INFO("modules.auctionhouse", "AH Bot initialized: Faction={}, BotIndex={}, GUID={}, Gold={}",
+        static_cast<uint8>(_faction), _botIndex, _botGuid.GetCounter(), _gold);
+}
+
+void AuctionHouseBot::EnsureLoaded()
+{
+    if (_loaded)
+        return;
+
+    std::lock_guard lock(_loadLock);
+    if (_loaded)
+        return;
+
+    LoadBotData();
+    _loaded = true;
+
+    LOG_INFO("modules.auctionhouse", "AH Bot loaded: Faction={}, BotIndex={}, GUID={}, Gold={}",
         static_cast<uint8>(_faction), _botIndex, _botGuid.GetCounter(), _gold);
 }
 
@@ -102,6 +117,8 @@ void AuctionHouseBot::Update(uint32 diff)
 {
     if (!sAuctionHouseConfig.IsAHBotEnabled())
         return;
+
+    EnsureLoaded();
 
     time_t now = time(nullptr);
     if (now - _lastUpdate < sAuctionHouseConfig.GetUpdateInterval() / 1000)

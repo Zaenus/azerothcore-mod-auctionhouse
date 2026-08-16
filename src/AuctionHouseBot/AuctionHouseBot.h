@@ -50,6 +50,7 @@ private:
     void CreateBotAccount();
     void LoadBotData();
     void SaveBotData();
+    void EnsureLoaded();
 
     AuctionHouseBotMgr* _mgr = nullptr;
     AuctionHouseFaction _faction;
@@ -58,6 +59,8 @@ private:
     uint64 _gold = 0;
     uint32 _activeAuctionCount = 0;
     time_t _lastUpdate = 0;
+    bool _loaded = false;
+    mutable std::mutex _loadLock;
 
     std::unique_ptr<BuyStrategy> _buyStrategy;
     std::unique_ptr<SellStrategy> _sellStrategy;

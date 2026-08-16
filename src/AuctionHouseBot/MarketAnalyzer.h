@@ -90,9 +90,13 @@ private:
     };
 
     mutable std::shared_mutex _pricesLock;
-    std::unordered_map<PriceKey, MarketPriceData, PriceKeyHash> _cachedPrices;
+    mutable std::unordered_map<PriceKey, MarketPriceData, PriceKeyHash> _cachedPrices;
 
-    void LoadPriceHistory();
+    mutable std::mutex _initLock;
+    mutable bool _initialized = false;
+
+    void EnsureLoaded() const;
+    void LoadPriceHistory() const;
     void SavePriceSnapshot(uint32 itemEntry, AuctionHouseFaction faction, const MarketPriceData& data, const char* dateStr);
     void CalculateMedian(std::vector<uint64> buyouts, uint64& median) const;
 

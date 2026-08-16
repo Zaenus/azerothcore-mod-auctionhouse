@@ -34,6 +34,21 @@ void BlackMarketRotation::Initialize()
     _refreshDay = sAuctionHouseConfig.GetBMAHRefreshDay();
     _refreshHour = sAuctionHouseConfig.GetBMAHRefreshHour();
 
+    CalculateNextRotationTime();
+
+    LOG_INFO("modules.auctionhouse", "BMAH Rotation initialized: current={}, next={}",
+        _currentRotationId, _nextRotationTime);
+}
+
+void BlackMarketRotation::EnsureLoaded()
+{
+    if (_loaded)
+        return;
+
+    std::lock_guard lock(_loadLock);
+    if (_loaded)
+        return;
+
     // Load last rotation from DB
     QueryResult result = WorldDatabase.Query("SELECT rotation_id FROM blackmarket_rotation_history ORDER BY rotation_id DESC LIMIT 1");
 
@@ -43,9 +58,9 @@ void BlackMarketRotation::Initialize()
         _currentRotationId = fields[0].Get<uint32>();
     }
 
-    CalculateNextRotationTime();
+    _loaded = true;
 
-    LOG_INFO("modules.auctionhouse", "BMAH Rotation initialized: current={}, next={}",
+    LOG_INFO("modules.auctionhouse", "BMAH Rotation loaded: current={}, next={}",
         _currentRotationId, _nextRotationTime);
 }
 
@@ -75,6 +90,7 @@ bool BlackMarketRotation::IsRotationDue() const
 
 uint32 BlackMarketRotation::StartNewRotation()
 {
+    EnsureLoaded();
     ++_currentRotationId;
     CalculateNextRotationTime();
 
@@ -84,6 +100,7 @@ uint32 BlackMarketRotation::StartNewRotation()
 
 void BlackMarketRotation::SaveRotationHistory(const std::vector<BMAHAuctionEntry>& items)
 {
+    EnsureLoaded();
     std::string itemsJson = BuildItemsJson(items);
 
     WorldDatabaseTransaction trans = WorldDatabase.BeginTransaction();

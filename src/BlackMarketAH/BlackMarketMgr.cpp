@@ -37,7 +37,6 @@ void BlackMarketMgr::Initialize()
     _npcEntry = sAuctionHouseConfig.GetBMAHNPCEntry();
 
     _itemPool = std::make_unique<BlackMarketItemPool>();
-    _itemPool->LoadFromDB();
 
     _rotation = std::make_unique<BlackMarketRotation>();
     _rotation->Initialize();
@@ -53,8 +52,7 @@ void BlackMarketMgr::Initialize()
         SpawnRotationItems();
     }
 
-    LOG_INFO("modules.auctionhouse", "Black Market AH initialized with {} active auctions",
-        _auctionHouse ? _auctionHouse->Getcount() : 0);
+    LOG_INFO("modules.auctionhouse", "Black Market AH initialized");
 }
 
 void BlackMarketMgr::CreateAuctionHouse()

@@ -26,11 +26,25 @@
 
 void MarketAnalyzer::Initialize()
 {
-    LoadPriceHistory();
-    LOG_INFO("modules.auctionhouse", "MarketAnalyzer initialized with {} cached prices", _cachedPrices.size());
+    _initialized = false;
+    LOG_INFO("modules.auctionhouse", "MarketAnalyzer initialized");
 }
 
-void MarketAnalyzer::LoadPriceHistory()
+void MarketAnalyzer::EnsureLoaded() const
+{
+    if (_initialized)
+        return;
+
+    std::unique_lock lock(_initLock);
+    if (_initialized)
+        return;
+
+    LoadPriceHistory();
+    _initialized = true;
+    LOG_INFO("modules.auctionhouse", "MarketAnalyzer loaded with {} cached prices", _cachedPrices.size());
+}
+
+void MarketAnalyzer::LoadPriceHistory() const
 {
     std::unique_lock lock(_pricesLock);
 
@@ -129,6 +143,8 @@ void MarketAnalyzer::RecordListing(AuctionHouseObject* ah, AuctionEntry* entry)
     if (!entry || entry->buyout == 0)
         return;
 
+    EnsureLoaded();
+
     AuctionHouseFaction faction = GetFactionFromAH(ah);
     PriceKey key{entry->item_template, faction};
 
@@ -149,6 +165,8 @@ void MarketAnalyzer::RecordSale(AuctionHouseObject* ah, AuctionEntry* entry)
 {
     if (!entry || entry->buyout == 0)
         return;
+
+    EnsureLoaded();
 
     AuctionHouseFaction faction = GetFactionFromAH(ah);
     PriceKey key{entry->item_template, faction};
@@ -171,6 +189,8 @@ void MarketAnalyzer::RecordExpiry(AuctionHouseObject* ah, AuctionEntry* entry)
     if (!entry || entry->buyout == 0)
         return;
 
+    EnsureLoaded();
+
     AuctionHouseFaction faction = GetFactionFromAH(ah);
     PriceKey key{entry->item_template, faction};
 
@@ -190,6 +210,8 @@ void MarketAnalyzer::RecordExpiry(AuctionHouseObject* ah, AuctionEntry* entry)
 
 MarketPriceData MarketAnalyzer::GetMarketPrice(uint32 itemEntry, AuctionHouseFaction faction) const
 {
+    EnsureLoaded();
+
     PriceKey key{itemEntry, faction};
     std::shared_lock lock(_pricesLock);
 

@@ -90,12 +90,3 @@ void AuctionHouseBotWorldScript::OnUpdate(uint32 diff)
     }
 }
 
-void AuctionHouseBotWorldScript::OnBeforeConfigLoad(bool reload)
-{
-    sAuctionHouseConfig.Initialize(reload);
-
-    if (reload)
-    {
-        sAuctionHouseBotMgr.Update(0); // Trigger re-initialization
-    }
-}

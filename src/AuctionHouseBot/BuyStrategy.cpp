@@ -122,7 +122,7 @@ bool BuyStrategy::EvaluateAuction(AuctionEntry* auction, BuyCandidate& candidate
         _bot->GetFaction() == AuctionHouseFaction::Alliance ? 0 :
         _bot->GetFaction() == AuctionHouseFaction::Horde ? 1 : 2);
 
-    uint64 marketValue = sMarketAnalyzer.GetMarketValue(auction->item_template, faction);
+    uint64 marketValue = MarketAnalyzer::Instance().GetMarketValue(auction->item_template, faction);
     if (marketValue == 0)
         return false;
 

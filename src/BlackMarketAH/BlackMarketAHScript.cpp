@@ -25,6 +25,8 @@
 #include "Creature.h"
 #include "GossipDef.h"
 #include "ObjectAccessor.h"
+#include "Chat.h"
+#include "ScriptedGossip.h"
 
 BlackMarketAHScript::BlackMarketAHScript()
     : CreatureScript("npc_blackmarket_auctioneer"),
@@ -92,14 +94,14 @@ void BlackMarketAHScript::SendBMAHList(Player* player, Creature* creature)
     BlackMarketAuctionHouse* bmah = sBlackMarketMgr.GetAuctionHouse();
     if (!bmah)
     {
-        player->GetSession()->SendNotification("Black Market Auction House is currently unavailable.");
+        ChatHandler(player->GetSession()).SendNotification("Black Market Auction House is currently unavailable.");
         return;
     }
 
     const auto& auctions = bmah->GetAuctions();
     if (auctions.empty())
     {
-        player->GetSession()->SendNotification("The Black Market is currently empty. Check back next rotation!");
+        ChatHandler(player->GetSession()).SendNotification("The Black Market is currently empty. Check back next rotation!");
         return;
     }
 
@@ -122,10 +124,10 @@ void BlackMarketAHScript::SendBMAHList(Player* player, Creature* creature)
              << (auction.currentBid % 10000) / 100 << "s "
              << auction.currentBid % 100 << "c\n";
         menu << "  Time Left: " << hoursLeft << "h " << minsLeft << "m\n";
-        menu << "  [View Details] (Action: " << (id << 16) | 1 << ")\n\n";
+        menu << "  [View Details] (Action: " << ((id << 16) | 1) << ")\n\n";
     }
 
-    player->GetSession()->SendNotification(menu.str().c_str());
+    ChatHandler(player->GetSession()).SendNotification(menu.str().c_str());
 }
 
 void BlackMarketAHScript::SendBMAHItemDetails(Player* player, Creature* creature, uint32 auctionId)
@@ -164,7 +166,7 @@ void BlackMarketAHScript::SendBMAHItemDetails(Player* player, Creature* creature
     details << "Time Left: " << hoursLeft << "h " << minsLeft << "m\n\n";
     details << "Enter bid amount (in copper):";
 
-    player->GetSession()->SendNotification(details.str().c_str());
+    ChatHandler(player->GetSession()).SendNotification(details.str().c_str());
 
     // Prompt for bid input
     player->PrepareGossipMenu(creature, 1001, true);
@@ -183,13 +185,13 @@ bool BlackMarketAHScript::HandlePlaceBid(Player* player, Creature* creature, con
     }
     catch (...)
     {
-        player->GetSession()->SendNotification("Invalid bid amount.");
+        ChatHandler(player->GetSession()).SendNotification("Invalid bid amount.");
         return false;
     }
 
     if (bidAmount == 0)
     {
-        player->GetSession()->SendNotification("Bid amount must be greater than 0.");
+        ChatHandler(player->GetSession()).SendNotification("Bid amount must be greater than 0.");
         return false;
     }
 
@@ -202,11 +204,11 @@ bool BlackMarketAHScript::HandlePlaceBid(Player* player, Creature* creature, con
 
     if (success)
     {
-        player->GetSession()->SendNotification("Your bid of " + std::to_string(bidAmount / 10000) + "g has been placed!");
+        ChatHandler(player->GetSession()).SendNotification("Your bid of " + std::to_string(bidAmount / 10000) + "g has been placed!");
     }
     else
     {
-        player->GetSession()->SendNotification("Bid failed: " + errorMsg);
+        ChatHandler(player->GetSession()).SendNotification("Bid failed: " + errorMsg);
     }
 
     return true;

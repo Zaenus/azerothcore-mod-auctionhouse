@@ -21,6 +21,8 @@
 #include "Logging/Log.h"
 #include "ObjectMgr.h"
 #include "WorldDatabase.h"
+#include "DatabaseEnv.h"
+#include "QueryResult.h"
 
 BlackMarketItemPool::BlackMarketItemPool() : _rng(std::random_device{}())
 {
@@ -30,8 +32,7 @@ void BlackMarketItemPool::LoadFromDB()
 {
     // Load from blackmarket_item_pools table
     // If table is empty, fall back to config
-    WorldDatabasePreparedStatement* stmt = WorldDatabase.GetPreparedStatement(WORLD_SEL_BMAH_ITEM_POOLS);
-    PreparedQueryResult result = WorldDatabase.Query(stmt);
+    QueryResult result = WorldDatabase.Query("SELECT id, category, item_entry, weight, min_ilvl, max_ilvl, min_bid, enabled FROM blackmarket_item_pools WHERE enabled = 1 ORDER BY category, weight DESC");
 
     if (result)
     {

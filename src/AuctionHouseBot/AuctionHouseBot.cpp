@@ -22,10 +22,12 @@
 #include "Config/AuctionHouseConfig.h"
 #include "AccountMgr.h"
 #include "CharacterDatabase.h"
+#include "Chat.h"
+#include "QueryResult.h"
 #include "Logging/Log.h"
+#include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "Player.h"
-#include "ScriptMgr.h"
 
 AuctionHouseBot::AuctionHouseBot(AuctionHouseBotMgr* mgr, AuctionHouseFaction faction, uint32 botIndex)
     : _mgr(mgr), _faction(faction), _botIndex(botIndex)
@@ -40,7 +42,6 @@ AuctionHouseBot::~AuctionHouseBot()
 void AuctionHouseBot::Initialize()
 {
     _gold = sAuctionHouseConfig.GetStartingGoldPerBot();
-    CreateBotAccount();
     LoadBotData();
 
     _buyStrategy = std::make_unique<BuyStrategy>(this);
@@ -50,100 +51,51 @@ void AuctionHouseBot::Initialize()
         static_cast<uint8>(_faction), _botIndex, _botGuid.GetCounter(), _gold);
 }
 
-void AuctionHouseBot::CreateBotAccount()
+void AuctionHouseBot::LoadBotData()
 {
-    std::string accountName = sAuctionHouseConfig.GetBotAccountPrefix() +
-        (_faction == AuctionHouseFaction::Alliance ? "Alliance" :
-         _faction == AuctionHouseFaction::Horde ? "Horde" : "Neutral") +
-        "_" + std::to_string(_botIndex + 1);
+    // Use fixed GUIDs for bots (created via SQL)
+    static const uint32 botGuids[3] = { 1000000, 1000001, 1000002 }; // Alliance, Horde, Neutral
+    _botGuid = ObjectGuid::Create<HighGuid::Player>(botGuids[static_cast<uint8>(_faction)] + _botIndex);
 
-    uint32 accountId = sAccountMgr->GetId(accountName);
-    if (!accountId)
+    // Load gold from database
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHARACTER);
+    stmt->SetData(0, _botGuid.GetCounter());
+    PreparedQueryResult result = CharacterDatabase.Query(stmt);
+
+    if (result)
     {
-        AccountCreateInfo info;
-        info.username = accountName;
-        info.password = "";
-        info.email = "";
-        info.recruiter = 0;
-        info.gmlevel = 0;
-        info.expansion = 2; // WotLK
-        info.lastIP = "127.0.0.1";
-        info.lastLogin = time(nullptr);
-        info.locale = "enUS";
-
-        if (!sAccountMgr->CreateAccount(accountName, "", "", 0, 2))
-        {
-            LOG_ERROR("modules.auctionhouse", "Failed to create AH bot account: {}", accountName);
-            return;
-        }
-
-        accountId = sAccountMgr->GetId(accountName);
-    }
-
-    // Create bot character if not exists
-    std::string charName = "AHBot_" +
-        (_faction == AuctionHouseFaction::Alliance ? "A" :
-         _faction == AuctionHouseFaction::Horde ? "H" : "N") +
-        std::to_string(_botIndex + 1);
-
-    ObjectGuid existingGuid = sObjectMgr->GetPlayerGUIDByName(charName);
-    if (existingGuid)
-    {
-        _botGuid = existingGuid;
+        Field* fields = result->Fetch();
+        // money is at index 53 in CHAR_SEL_CHARACTER (check schema)
+        _gold = fields[53].Get<uint64>();
     }
     else
     {
-        // Create character (level 80, appropriate race/class)
-        // This is simplified - in production you'd use proper character creation
-        _botGuid = ObjectGuid::Create<HighGuid::Player>(sObjectMgr->GenerateLowGuid<HighGuid::Player>());
-        LOG_INFO("modules.auctionhouse", "Created AH bot character: {} (GUID: {})", charName, _botGuid.GetCounter());
+        // Character doesn't exist, set default gold and update DB
+        _gold = sAuctionHouseConfig.GetStartingGoldPerBot();
+        SaveBotData();
     }
 
-    // Ensure bot has starting gold
-    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_CHARACTER_MONEY);
-    stmt->SetData(0, _gold);
-    stmt->SetData(1, _botGuid.GetCounter());
-    CharacterDatabase.Execute(stmt);
-}
-
-void AuctionHouseBot::LoadBotData()
-{
-    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_AH_BOT_INVENTORY);
+    // Load inventory
+    stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHARACTER_INVENTORY);
     stmt->SetData(0, _botGuid.GetCounter());
-    PreparedQueryResult result = CharacterDatabase.Query(stmt);
+    result = CharacterDatabase.Query(stmt);
 
     if (result)
     {
         do
         {
             Field* fields = result->Fetch();
-            // Load bot inventory from DB
-            // Implementation depends on inventory tracking needs
+            // Process inventory items if needed
         } while (result->NextRow());
-    }
-
-    // Load gold
-    stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHARACTER_MONEY);
-    stmt->SetData(0, _botGuid.GetCounter());
-    result = CharacterDatabase.Query(stmt);
-
-    if (result)
-    {
-        Field* fields = result->Fetch();
-        _gold = fields[0].Get<uint64>();
     }
 }
 
 void AuctionHouseBot::SaveBotData()
 {
-    CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
-
-    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_CHARACTER_MONEY);
-    stmt->SetData(0, _gold);
-    stmt->SetData(1, _botGuid.GetCounter());
-    trans->Append(stmt);
-
-    CharacterDatabase.CommitTransaction(trans);
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_CHARACTER);
+    stmt->SetData(0, _botGuid.GetCounter()); // guid
+    stmt->SetData(53, _gold); // money
+    CharacterDatabase.Execute(stmt);
 }
 
 void AuctionHouseBot::Update(uint32 diff)
@@ -173,7 +125,7 @@ void AuctionHouseBot::Update(uint32 diff)
     }
 
     // Execute buy/sell strategies
-    if (_buyStrategy && _gold > 10000) // At least 1g to operate
+    if (_buyStrategy && _gold > 10000)
         _buyStrategy->Execute();
 
     if (_sellStrategy)

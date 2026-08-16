@@ -49,7 +49,7 @@ private:
     AuctionHouseBotMgr& operator=(const AuctionHouseBotMgr&) = delete;
 
     std::array<std::vector<std::unique_ptr<AuctionHouseBot>>, 3> _bots;
-    std::mutex _botsLock;
+    mutable std::mutex _botsLock;
     bool _initialized = false;
 };
 

@@ -20,6 +20,7 @@
 
 #include "Common.h"
 #include "Config/AuctionHouseConfig.h"
+#include "BlackMarketAuctionHouse.h"
 #include <chrono>
 #include <string>
 

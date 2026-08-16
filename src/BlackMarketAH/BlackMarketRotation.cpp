@@ -20,6 +20,7 @@
 #include "Config/AuctionHouseConfig.h"
 #include "Logging/Log.h"
 #include "WorldDatabase.h"
+#include "QueryResult.h"
 #include <ctime>
 #include <sstream>
 #include <iomanip>
@@ -34,8 +35,7 @@ void BlackMarketRotation::Initialize()
     _refreshHour = sAuctionHouseConfig.GetBMAHRefreshHour();
 
     // Load last rotation from DB
-    WorldDatabasePreparedStatement* stmt = WorldDatabase.GetPreparedStatement(WORLD_SEL_BMAH_LAST_ROTATION);
-    PreparedQueryResult result = WorldDatabase.Query(stmt);
+    QueryResult result = WorldDatabase.Query("SELECT rotation_id FROM blackmarket_rotation_history ORDER BY rotation_id DESC LIMIT 1");
 
     if (result)
     {
@@ -89,15 +89,16 @@ void BlackMarketRotation::SaveRotationHistory(const std::vector<BMAHAuctionEntry
     WorldDatabaseTransaction trans = WorldDatabase.BeginTransaction();
 
     // Insert rotation history
-    WorldDatabasePreparedStatement* stmt = WorldDatabase.GetPreparedStatement(WORLD_INS_BMAH_ROTATION_HISTORY);
-    stmt->SetData(0, _currentRotationId);
-    stmt->SetData(1, itemsJson);
-    trans->Append(stmt);
+    std::string query1 = Acore::StringFormat(
+        "INSERT INTO blackmarket_rotation_history (rotation_id, items_json) VALUES ({}, '{}')",
+        _currentRotationId, itemsJson);
+    trans->Append(query1);
 
     // Update last rotation id
-    stmt = WorldDatabase.GetPreparedStatement(WORLD_UPD_BMAH_LAST_ROTATION);
-    stmt->SetData(0, _currentRotationId);
-    trans->Append(stmt);
+    std::string query2 = Acore::StringFormat(
+        "INSERT INTO blackmarket_rotation_history (rotation_id) VALUES ({}) ON DUPLICATE KEY UPDATE rotation_id = VALUES(rotation_id)",
+        _currentRotationId);
+    trans->Append(query2);
 
     WorldDatabase.CommitTransaction(trans);
 }

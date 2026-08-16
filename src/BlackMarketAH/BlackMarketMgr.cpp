@@ -111,7 +111,7 @@ void BlackMarketMgr::SpawnRotationItems()
     uint32 rotationId = _rotation->StartNewRotation();
 
     // Select items for this rotation
-    std::vector<BMAHAuction> newAuctions = _itemPool->SelectItemsForRotation(
+    std::vector<BMAHAuctionEntry> newAuctions = _itemPool->SelectItemsForRotation(
         sAuctionHouseConfig.GetBMAHMaxActiveAuctions(),
         rotationId);
 

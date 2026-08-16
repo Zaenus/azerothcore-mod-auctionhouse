@@ -22,6 +22,7 @@
 #include "DatabaseEnv.h"
 #include "AuctionHouseMgr.h"
 #include <mutex>
+#include <shared_mutex>
 #include <unordered_map>
 
 struct MarketPriceData
@@ -92,10 +93,10 @@ private:
     std::unordered_map<PriceKey, MarketPriceData, PriceKeyHash> _cachedPrices;
 
     void LoadPriceHistory();
-    void SavePriceSnapshot(uint32 itemEntry, AuctionHouseFaction faction, const MarketPriceData& data);
-    void CalculateMedian(std::vector<uint64>& buyouts, uint64& median) const;
+    void SavePriceSnapshot(uint32 itemEntry, AuctionHouseFaction faction, const MarketPriceData& data, const char* dateStr);
+    void CalculateMedian(std::vector<uint64> buyouts, uint64& median) const;
 
-    static AuctionHouseFaction GetFactionFromAH(AuctionHouseObject* ah);
+    static AuctionHouseFaction GetFactionFromAH(AuctionHouseObject const* ah);
 };
 
 #endif

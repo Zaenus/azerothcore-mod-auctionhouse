@@ -26,7 +26,7 @@ void AuctionHouseBotScript::OnAuctionAdd(AuctionHouseObject* ah, AuctionEntry* e
     if (!sAuctionHouseConfig.IsAHBotEnabled())
         return;
 
-    sMarketAnalyzer.RecordListing(ah, entry);
+    MarketAnalyzer::Instance().RecordListing(ah, entry);
 }
 
 void AuctionHouseBotScript::OnAuctionRemove(AuctionHouseObject* ah, AuctionEntry* entry)
@@ -42,7 +42,7 @@ void AuctionHouseBotScript::OnAuctionSuccessful(AuctionHouseObject* ah, AuctionE
     if (!sAuctionHouseConfig.IsAHBotEnabled())
         return;
 
-    sMarketAnalyzer.RecordSale(ah, entry);
+    MarketAnalyzer::Instance().RecordSale(ah, entry);
 }
 
 void AuctionHouseBotScript::OnAuctionExpire(AuctionHouseObject* ah, AuctionEntry* entry)
@@ -50,7 +50,7 @@ void AuctionHouseBotScript::OnAuctionExpire(AuctionHouseObject* ah, AuctionEntry
     if (!sAuctionHouseConfig.IsAHBotEnabled())
         return;
 
-    sMarketAnalyzer.RecordExpiry(ah, entry);
+    MarketAnalyzer::Instance().RecordExpiry(ah, entry);
 }
 
 void AuctionHouseBotScript::OnBeforeAuctionHouseMgrUpdate()
@@ -61,7 +61,7 @@ void AuctionHouseBotScript::OnBeforeAuctionHouseMgrUpdate()
     sAuctionHouseBotMgr.Update(60000); // Called every minute by AH mgr
 }
 
-void AuctionHouseBotWorldScript::OnWorldUpdate(uint32 diff)
+void AuctionHouseBotWorldScript::OnUpdate(uint32 diff)
 {
     if (!sAuctionHouseConfig.IsAHBotEnabled())
         return;
@@ -85,7 +85,7 @@ void AuctionHouseBotWorldScript::OnWorldUpdate(uint32 diff)
         tm* localTime = localtime(&now);
         if (localTime->tm_hour == 0 && localTime->tm_min < 5)
         {
-            sMarketAnalyzer.DailySnapshot();
+            MarketAnalyzer::Instance().DailySnapshot();
         }
     }
 }

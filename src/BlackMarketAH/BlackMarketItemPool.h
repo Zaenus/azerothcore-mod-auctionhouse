@@ -20,6 +20,7 @@
 
 #include "Common.h"
 #include "Config/AuctionHouseConfig.h"
+#include "BlackMarketAuctionHouse.h"
 #include <map>
 #include <vector>
 #include <random>
@@ -47,7 +48,7 @@ public:
 
 private:
     std::map<std::string, std::vector<PoolItem>> _pools;
-    std::mt19937 _rng;
+    mutable std::mt19937 _rng;
 
     uint64 CalculateStartBid(const PoolItem& item) const;
     uint32 SelectRandomDuration() const;

@@ -19,6 +19,7 @@
 #define MOD_AUCTIONHOUSE_BLACKMARKET_AUCTIONHOUSE_H_
 
 #include "AuctionHouseMgr.h"
+#include "Config/AuctionHouseConfig.h"
 #include <map>
 #include <mutex>
 
@@ -26,6 +27,7 @@ struct BMAHAuctionEntry
 {
     uint32 id = 0;
     uint32 itemEntry = 0;
+    uint32 itemCount = 1;
     ObjectGuid itemGuid;
     uint64 startBid = 0;
     uint64 currentBid = 0;
@@ -59,7 +61,7 @@ public:
 private:
     std::map<uint32, BMAHAuctionEntry> _auctions;
     uint32 _nextAuctionId = 1;
-    std::mutex _mutex;
+    mutable std::mutex _mutex;
 };
 
 #endif

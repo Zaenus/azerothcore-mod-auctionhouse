@@ -21,13 +21,12 @@
 #include "Common.h"
 #include "AuctionHouseMgr.h"
 #include "Config/AuctionHouseConfig.h"
+#include "BlackMarketAuctionHouse.h"
+#include "BlackMarketItemPool.h"
+#include "BlackMarketRotation.h"
+#include "BlackMarketBidManager.h"
 #include <mutex>
 #include <vector>
-
-class BlackMarketAuctionHouse;
-class BlackMarketItemPool;
-class BlackMarketRotation;
-class BlackMarketBidManager;
 
 struct BMAHAuction
 {

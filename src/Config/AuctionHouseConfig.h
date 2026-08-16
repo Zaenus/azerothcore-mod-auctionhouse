@@ -18,7 +18,9 @@
 #ifndef MOD_AUCTIONHOUSE_CONFIG_H_
 #define MOD_AUCTIONHOUSE_CONFIG_H_
 
+#include "Common.h"
 #include "ConfigValueCache.h"
+#include <map>
 #include <set>
 #include <string>
 #include <vector>

@@ -17,10 +17,12 @@
 
 #include "SellStrategy.h"
 #include "AuctionHouseBot.h"
+#include "MarketAnalyzer.h"
 #include "Config/AuctionHouseConfig.h"
 #include "Logging/Log.h"
 #include "ObjectMgr.h"
 #include "Player.h"
+#include "QueryResult.h"
 
 SellStrategy::SellStrategy(AuctionHouseBot* bot) : _bot(bot)
 {
@@ -69,9 +71,11 @@ void SellStrategy::ScanInventory(std::vector<SellCandidate>& candidates)
 {
     // In a real implementation, this would scan the bot's actual inventory
     // For now, we'll use the bot inventory database table
-    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_AH_BOT_INVENTORY);
-    stmt->SetData(0, _bot->GetBotGuid().GetCounter());
-    PreparedQueryResult result = CharacterDatabase.Query(stmt);
+    std::string query = Acore::StringFormat(
+        "SELECT item_entry, count, listed FROM auctionhouse_bot_inventory WHERE bot_guid = {} AND listed = 0",
+        _bot->GetBotGuid().GetCounter());
+
+    QueryResult result = CharacterDatabase.Query(query);
 
     if (!result)
         return;
@@ -83,9 +87,9 @@ void SellStrategy::ScanInventory(std::vector<SellCandidate>& candidates)
     {
         Field* fields = result->Fetch();
 
-        uint32 itemEntry = fields[1].Get<uint32>(); // item_entry
-        uint32 count = fields[2].Get<uint32>();     // count
-        uint8 listed = fields[5].Get<uint8>();      // listed
+        uint32 itemEntry = fields[0].Get<uint32>(); // item_entry
+        uint32 count = fields[1].Get<uint32>();     // count
+        uint8 listed = fields[2].Get<uint8>();      // listed
 
         // Skip already listed items
         if (listed)
@@ -122,7 +126,7 @@ bool SellStrategy::EvaluateItem(uint32 itemEntry, uint32 count, SellCandidate& c
         _bot->GetFaction() == AuctionHouseFaction::Alliance ? 0 :
         _bot->GetFaction() == AuctionHouseFaction::Horde ? 1 : 2);
 
-    uint64 marketValue = sMarketAnalyzer.GetMarketValue(itemEntry, faction);
+    uint64 marketValue = MarketAnalyzer::Instance().GetMarketValue(itemEntry, faction);
     if (marketValue == 0)
         return false;
 

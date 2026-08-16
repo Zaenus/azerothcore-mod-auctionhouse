@@ -33,8 +33,8 @@ void AddSC_BlackMarketAHScript()
     new BlackMarketAHScript();
 }
 
-// Module entry point - called by script loader
-void AddSC_mod_auctionhouseScripts()
+// Module entry point - called by script loader (matches mod-auctionhouse -> mod_auctionhouse)
+void Addmod_auctionhouseScripts()
 {
     AddSC_AuctionHouseBotScript();
     AddSC_BlackMarketAHScript();

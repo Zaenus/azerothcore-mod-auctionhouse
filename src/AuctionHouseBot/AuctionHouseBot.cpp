@@ -28,6 +28,7 @@
 #include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "Player.h"
+#include "Utilities/StringFormat.h"
 
 AuctionHouseBot::AuctionHouseBot(AuctionHouseBotMgr* mgr, AuctionHouseFaction faction, uint32 botIndex)
     : _mgr(mgr), _faction(faction), _botIndex(botIndex)
@@ -80,8 +81,8 @@ void AuctionHouseBot::LoadBotData()
     if (result)
     {
         Field* fields = result->Fetch();
-        // money is at index 53 in CHAR_SEL_CHARACTER (check schema)
-        _gold = fields[53].Get<uint64>();
+        // money is at index 8 in CHAR_SEL_CHARACTER
+        _gold = fields[8].Get<uint64>();
     }
     else
     {
@@ -107,10 +108,10 @@ void AuctionHouseBot::LoadBotData()
 
 void AuctionHouseBot::SaveBotData()
 {
-    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_CHARACTER);
-    stmt->SetData(0, _botGuid.GetCounter()); // guid
-    stmt->SetData(53, _gold); // money
-    CharacterDatabase.Execute(stmt);
+    // Persist the bot's gold. CHAR_UPD_CHARACTER has money at param index 6 and
+    // its index ordering is fragile, so use a targeted update instead.
+    CharacterDatabase.Execute(Acore::StringFormat(
+        "UPDATE characters SET money = {} WHERE guid = {}", _gold, _botGuid.GetCounter()));
 }
 
 void AuctionHouseBot::Update(uint32 diff)

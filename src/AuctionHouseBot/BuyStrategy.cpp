@@ -18,9 +18,11 @@
 #include "BuyStrategy.h"
 #include "AuctionHouseBot.h"
 #include "Config/AuctionHouseConfig.h"
+#include "CharacterDatabase.h"
 #include "Logging/Log.h"
 #include "ObjectMgr.h"
 #include "Player.h"
+#include "Utilities/StringFormat.h"
 
 BuyStrategy::BuyStrategy(AuctionHouseBot* bot) : _bot(bot)
 {
@@ -28,9 +30,6 @@ BuyStrategy::BuyStrategy(AuctionHouseBot* bot) : _bot(bot)
 
 void BuyStrategy::Execute()
 {
-    if (_bot->GetActiveAuctionCount() >= sAuctionHouseConfig.GetMaxActiveAuctionsPerBot())
-        return;
-
     if (_bot->GetGold() < 10000) // Min 1g
         return;
 
@@ -52,10 +51,7 @@ void BuyStrategy::Execute()
             break;
 
         if (PurchaseAuction(candidate))
-        {
             ++itemsProcessed;
-            _bot->SetActiveAuctionCount(_bot->GetActiveAuctionCount() + 1);
-        }
     }
 
     if (itemsProcessed > 0)
@@ -165,13 +161,32 @@ bool BuyStrategy::PurchaseAuction(const BuyCandidate& candidate)
     if (!_bot->SpendGold(auction->buyout))
         return false;
 
-    // Create a fake player for the bid (using bot's character)
-    // This is simplified - actual implementation would use proper packet handling
-    LOG_INFO("modules.auctionhouse", "AH Bot buying item {} (auction #{}) for {} copper, market value: {}",
-        auction->item_template, auction->Id, auction->buyout, candidate.marketValue);
+    CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
 
-    // TODO: Actually place the bid using auction house system
-    // This requires simulating the client packet or calling internal methods
+    auction->bidder = _bot->GetBotGuid();
+    auction->bid = auction->buyout;
+
+    // Mails: pending/success to the owner, won item to the bot
+    sAuctionMgr->SendAuctionSalePendingMail(auction, trans);
+    sAuctionMgr->SendAuctionSuccessfulMail(auction, trans);
+    sAuctionMgr->SendAuctionWonMail(auction, trans);
+
+    auction->DeleteFromDB(trans);
+    sAuctionMgr->RemoveAItem(auction->item_guid);
+    ah->RemoveAuction(auction);
+
+    // Add the item to the bot's virtual inventory so it can be re-listed
+    CharacterDatabase.Execute(Acore::StringFormat(
+        "INSERT INTO auctionhouse_bot_inventory (bot_guid, item_guid, item_entry, count, acquired_price, acquired_date, listed) "
+        "VALUES ({}, {}, {}, {}, {}, CURDATE(), 0)",
+        _bot->GetBotGuid().GetCounter(), auction->item_guid.GetCounter(),
+        auction->item_template, auction->itemCount, auction->buyout));
+
+    CharacterDatabase.CommitTransaction(trans);
+
+    LOG_INFO("modules.auctionhouse",
+        "AH Bot buying item {} (auction #{}) for {} copper, market value: {}",
+        auction->item_template, auction->Id, auction->buyout, candidate.marketValue);
 
     return true;
 }

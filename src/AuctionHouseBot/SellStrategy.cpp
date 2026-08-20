@@ -19,10 +19,14 @@
 #include "AuctionHouseBot.h"
 #include "MarketAnalyzer.h"
 #include "Config/AuctionHouseConfig.h"
+#include "CharacterDatabase.h"
+#include "GameTime.h"
+#include "Item.h"
 #include "Logging/Log.h"
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "QueryResult.h"
+#include "Utilities/StringFormat.h"
 
 SellStrategy::SellStrategy(AuctionHouseBot* bot) : _bot(bot)
 {
@@ -141,9 +145,16 @@ bool SellStrategy::EvaluateItem(uint32 itemEntry, uint32 count, SellCandidate& c
     if (!ahEntry)
         return false;
 
-    // Estimate deposit (12h, 24h, 48h)
+    // Estimate deposit (12h, 24h, 48h). GetAuctionDeposit requires a valid
+    // item pointer, so create a temporary one for the calculation.
     uint32 duration = 48 * 60; // 48 hours in minutes
-    uint64 deposit = AuctionHouseMgr::GetAuctionDeposit(ahEntry, duration * 60, nullptr, count);
+
+    Item* tempItem = Item::CreateItem(itemEntry, count, nullptr, false, 0, true);
+    if (!tempItem)
+        return false;
+
+    uint64 deposit = AuctionHouseMgr::GetAuctionDeposit(ahEntry, duration * 60, tempItem, count);
+    delete tempItem;
 
     if (deposit > _bot->GetGold())
         return false;
@@ -160,23 +171,64 @@ bool SellStrategy::EvaluateItem(uint32 itemEntry, uint32 count, SellCandidate& c
 
 bool SellStrategy::ListItem(const SellCandidate& candidate)
 {
-    AuctionHouseObject* ah = sAuctionMgr->GetAuctionsMapByHouseId(
+    AuctionHouseId houseId =
         _bot->GetFaction() == AuctionHouseFaction::Alliance ? AuctionHouseId::Alliance :
-        _bot->GetFaction() == AuctionHouseFaction::Horde ? AuctionHouseId::Horde : AuctionHouseId::Neutral);
+        _bot->GetFaction() == AuctionHouseFaction::Horde ? AuctionHouseId::Horde : AuctionHouseId::Neutral;
 
-    if (!ah)
+    AuctionHouseObject* ah = sAuctionMgr->GetAuctionsMapByHouseId(houseId);
+    AuctionHouseEntry const* ahEntry = AuctionHouseMgr::GetAuctionHouseEntryFromHouse(houseId);
+
+    if (!ah || !ahEntry)
         return false;
 
     // Spend deposit
     if (!_bot->SpendGold(candidate.deposit))
         return false;
 
-    LOG_INFO("modules.auctionhouse", "AH Bot listing item {} x{} for {} copper (market: {}, deposit: {})",
+    ItemTemplate const* proto = sObjectMgr->GetItemTemplate(candidate.itemEntry);
+    if (!proto)
+        return false;
+
+    // Create a virtual item owned by the bot
+    Item* virtualItem = Item::CreateItem(candidate.itemEntry, candidate.itemCount, nullptr, false, 0, false);
+    if (!virtualItem)
+        return false;
+
+    virtualItem->SetOwnerGUID(_bot->GetBotGuid());
+
+    AuctionEntry* auction = new AuctionEntry();
+    auction->Id = sObjectMgr->GenerateAuctionID();
+    auction->houseId = houseId;
+    auction->item_guid = virtualItem->GetGUID();
+    auction->item_template = candidate.itemEntry;
+    auction->itemCount = candidate.itemCount;
+    auction->owner = _bot->GetBotGuid();
+    auction->startbid = static_cast<uint32>(candidate.marketValue);
+    auction->bidder = ObjectGuid::Empty;
+    auction->bid = 0;
+    auction->buyout = static_cast<uint32>(candidate.minSellPrice);
+    auction->expire_time = GameTime::GetGameTime().count() + static_cast<time_t>(candidate.duration) * 60;
+    auction->deposit = static_cast<uint32>(candidate.deposit);
+    auction->auctionHouseEntry = ahEntry;
+
+    // Add virtual item to auction house manager
+    sAuctionMgr->AddAItem(virtualItem);
+
+    CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+    virtualItem->SaveToDB(trans);
+    ah->AddAuction(auction);
+    auction->SaveToDB(trans);
+    CharacterDatabase.CommitTransaction(trans);
+
+    // Item is now listed on the AH, remove it from the bot's virtual inventory
+    CharacterDatabase.Execute(Acore::StringFormat(
+        "DELETE FROM auctionhouse_bot_inventory WHERE bot_guid = {} AND item_entry = {} AND listed = 0",
+        _bot->GetBotGuid().GetCounter(), candidate.itemEntry));
+
+    LOG_INFO("modules.auctionhouse",
+        "AH Bot listing item {} x{} for {} copper (market: {}, deposit: {})",
         candidate.itemEntry, candidate.itemCount, candidate.minSellPrice,
         candidate.marketValue, candidate.deposit);
-
-    // TODO: Actually create the auction using auction house system
-    // This requires creating an AuctionEntry and calling AddAuction
 
     return true;
 }

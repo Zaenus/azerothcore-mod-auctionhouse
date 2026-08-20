@@ -72,6 +72,7 @@ void AuctionHouseBotWorldScript::OnUpdate(uint32 diff)
     if (updateTimer >= 60000) // Every minute
     {
         updateTimer = 0;
+        MarketAnalyzer::Instance().UpdatePrices();
         sAuctionHouseBotMgr.Update(diff);
     }
 

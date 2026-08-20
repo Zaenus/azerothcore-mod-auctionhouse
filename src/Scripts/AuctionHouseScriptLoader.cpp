@@ -16,8 +16,6 @@
  */
 
 #include "AuctionHouseBot/AuctionHouseBotScript.h"
-#include "BlackMarketAH/BlackMarketAHScript.h"
-#include "BlackMarketAH/BlackMarketMgr.h"
 #include "Config/AuctionHouseConfig.h"
 #include "ScriptMgr.h"
 
@@ -28,20 +26,12 @@ void AddSC_AuctionHouseBotScript()
     new AuctionHouseBotWorldScript();
 }
 
-// BMAH scripts
-void AddSC_BlackMarketAHScript()
-{
-    new BlackMarketAHScript();
-}
-
 // Module entry point - called by script loader (matches mod-auctionhouse -> mod_auctionhouse)
 void Addmod_auctionhouseScripts()
 {
     sAuctionHouseConfig.Initialize(false);
     MarketAnalyzer::Instance().Initialize();
     sAuctionHouseBotMgr.Initialize();
-    sBlackMarketMgr.Initialize();
 
     AddSC_AuctionHouseBotScript();
-    AddSC_BlackMarketAHScript();
 }

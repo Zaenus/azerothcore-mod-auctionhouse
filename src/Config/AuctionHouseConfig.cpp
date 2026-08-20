@@ -21,7 +21,6 @@
 void AuctionHouseConfig::Initialize(bool /*reload*/)
 {
     LoadAHBotConfig();
-    LoadBMAHConfig();
 }
 
 void AuctionHouseConfig::LoadAHBotConfig()
@@ -49,27 +48,6 @@ void AuctionHouseConfig::LoadAHBotConfig()
     _maxItemsPerCycle = sConfigMgr->GetOption<uint32>("AuctionHouseBot.MaxItemsPerCycle", 20);
     _relistThresholdHours = sConfigMgr->GetOption<uint32>("AuctionHouseBot.RelistThresholdHours", 12);
     _underpriceThreshold = sConfigMgr->GetOption<float>("AuctionHouseBot.UnderpriceThreshold", 0.50f);
-}
-
-void AuctionHouseConfig::LoadBMAHConfig()
-{
-    _bmahEnabled = sConfigMgr->GetOption<bool>("BlackMarketAH.Enabled", true);
-    _bmahNPCEntry = sConfigMgr->GetOption<uint32>("BlackMarketAH.NPCEntry", 67766);
-    _bmahRefreshDay = sConfigMgr->GetOption<uint8>("BlackMarketAH.RefreshDay", 3);
-    _bmahRefreshHour = sConfigMgr->GetOption<uint32>("BlackMarketAH.RefreshHour", 3);
-    _bmahMaxActiveAuctions = sConfigMgr->GetOption<uint32>("BlackMarketAH.MaxActiveAuctions", 10);
-    _bmahMinDuration = sConfigMgr->GetOption<uint32>("BlackMarketAH.MinDuration", 86400);
-    _bmahMaxDuration = sConfigMgr->GetOption<uint32>("BlackMarketAH.MaxDuration", 172800);
-    _bmahDepositMultiplier = sConfigMgr->GetOption<float>("BlackMarketAH.DepositMultiplier", 0.0f);
-    _bmahCutPercent = sConfigMgr->GetOption<uint32>("BlackMarketAH.CutPercent", 0);
-    _bmahBidIncrementPercent = sConfigMgr->GetOption<float>("BlackMarketAH.BidIncrementPercent", 0.05f);
-
-    _poolConfigs["Mounts"] = ParsePoolConfig(sConfigMgr->GetOption<std::string>("BlackMarketAH.Pool.Mounts", ""));
-    _poolConfigs["Pets"] = ParsePoolConfig(sConfigMgr->GetOption<std::string>("BlackMarketAH.Pool.Pets", ""));
-    _poolConfigs["Transmog"] = ParsePoolConfig(sConfigMgr->GetOption<std::string>("BlackMarketAH.Pool.Transmog", ""));
-    _poolConfigs["Gear"] = ParsePoolConfig(sConfigMgr->GetOption<std::string>("BlackMarketAH.Pool.Gear", ""));
-    _poolConfigs["TCG"] = ParsePoolConfig(sConfigMgr->GetOption<std::string>("BlackMarketAH.Pool.TCG", ""));
-    _poolConfigs["Misc"] = ParsePoolConfig(sConfigMgr->GetOption<std::string>("BlackMarketAH.Pool.Misc", ""));
 }
 
 std::set<uint32> AuctionHouseConfig::ParseCSVUInt32(const std::string& str) const
@@ -101,56 +79,4 @@ std::set<uint32> AuctionHouseConfig::ParseCSVUInt32(const std::string& str) cons
         start = comma + 1;
     }
     return result;
-}
-
-BMAHPoolConfig AuctionHouseConfig::ParsePoolConfig(const std::string& str) const
-{
-    BMAHPoolConfig config;
-    if (str.empty())
-        return config;
-
-    // Format: "weight:minIlvl:maxIlvl:entry1,entry2,..."
-    size_t pos1 = str.find(':');
-    size_t pos2 = str.find(':', pos1 + 1);
-    size_t pos3 = str.find(':', pos2 + 1);
-
-    if (pos1 == std::string::npos || pos2 == std::string::npos || pos3 == std::string::npos)
-        return config;
-
-    config.weight = std::stoul(str.substr(0, pos1));
-    config.minIlvl = std::stoul(str.substr(pos1 + 1, pos2 - pos1 - 1));
-    config.maxIlvl = std::stoul(str.substr(pos2 + 1, pos3 - pos2 - 1));
-
-    std::string entriesStr = str.substr(pos3 + 1);
-    size_t start = 0;
-    while (start < entriesStr.size())
-    {
-        size_t comma = entriesStr.find(',', start);
-        if (comma == std::string::npos)
-            comma = entriesStr.size();
-
-        std::string token = entriesStr.substr(start, comma - start);
-        if (!token.empty())
-        {
-            try
-            {
-                config.itemEntries.push_back(std::stoul(token));
-            }
-            catch (...)
-            {
-                // Ignore invalid entries
-            }
-        }
-
-        start = comma + 1;
-    }
-
-    return config;
-}
-
-const BMAHPoolConfig& AuctionHouseConfig::GetPoolConfig(const std::string& category) const
-{
-    static BMAHPoolConfig emptyConfig;
-    auto it = _poolConfigs.find(category);
-    return it != _poolConfigs.end() ? it->second : emptyConfig;
 }

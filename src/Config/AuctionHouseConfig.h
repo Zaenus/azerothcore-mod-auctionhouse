@@ -49,37 +49,6 @@ enum class AHBotConfig
     NUM_CONFIGS
 };
 
-enum class BMAHConfig
-{
-    ENABLED,
-    NPC_ENTRY,
-    REFRESH_DAY,
-    REFRESH_HOUR,
-    MAX_ACTIVE_AUCTIONS,
-    MIN_DURATION,
-    MAX_DURATION,
-    DEPOSIT_MULTIPLIER,
-    CUT_PERCENT,
-    BID_INCREMENT_PERCENT,
-
-    POOL_MOUNTS,
-    POOL_PETS,
-    POOL_TRANSMOG,
-    POOL_GEAR,
-    POOL_TCG,
-    POOL_MISC,
-
-    NUM_CONFIGS
-};
-
-struct BMAHPoolConfig
-{
-    uint32 weight = 0;
-    uint32 minIlvl = 1;
-    uint32 maxIlvl = 277;
-    std::vector<uint32> itemEntries;
-};
-
 class AuctionHouseConfig
 {
 public:
@@ -91,7 +60,6 @@ public:
 
     void Initialize(bool reload = false);
     void LoadAHBotConfig();
-    void LoadBMAHConfig();
 
     // AH Bot config getters
     bool IsAHBotEnabled() const { return _ahBotEnabled; }
@@ -113,20 +81,6 @@ public:
     uint32 GetRelistThresholdHours() const { return _relistThresholdHours; }
     float GetUnderpriceThreshold() const { return _underpriceThreshold; }
 
-    // BMAH config getters
-    bool IsBMAHEnabled() const { return _bmahEnabled; }
-    uint32 GetBMAHNPCEntry() const { return _bmahNPCEntry; }
-    uint8 GetBMAHRefreshDay() const { return _bmahRefreshDay; }
-    uint32 GetBMAHRefreshHour() const { return _bmahRefreshHour; }
-    uint32 GetBMAHMaxActiveAuctions() const { return _bmahMaxActiveAuctions; }
-    uint32 GetBMAHMinDuration() const { return _bmahMinDuration; }
-    uint32 GetBMAHMaxDuration() const { return _bmahMaxDuration; }
-    float GetBMAHDepositMultiplier() const { return _bmahDepositMultiplier; }
-    uint32 GetBMAHCutPercent() const { return _bmahCutPercent; }
-    float GetBMAHBidIncrementPercent() const { return _bmahBidIncrementPercent; }
-
-    const BMAHPoolConfig& GetPoolConfig(const std::string& category) const;
-
 private:
     AuctionHouseConfig() = default;
     ~AuctionHouseConfig() = default;
@@ -135,7 +89,6 @@ private:
     AuctionHouseConfig& operator=(const AuctionHouseConfig&) = delete;
 
     std::set<uint32> ParseCSVUInt32(const std::string& str) const;
-    BMAHPoolConfig ParsePoolConfig(const std::string& str) const;
 
     // AH Bot config
     bool _ahBotEnabled = true;
@@ -156,20 +109,6 @@ private:
     uint32 _maxItemsPerCycle = 20;
     uint32 _relistThresholdHours = 12;
     float _underpriceThreshold = 0.50f;
-
-    // BMAH config
-    bool _bmahEnabled = true;
-    uint32 _bmahNPCEntry = 67766;
-    uint8 _bmahRefreshDay = 3;
-    uint32 _bmahRefreshHour = 3;
-    uint32 _bmahMaxActiveAuctions = 10;
-    uint32 _bmahMinDuration = 86400;
-    uint32 _bmahMaxDuration = 172800;
-    float _bmahDepositMultiplier = 0.0f;
-    uint32 _bmahCutPercent = 0;
-    float _bmahBidIncrementPercent = 0.05f;
-
-    std::map<std::string, BMAHPoolConfig> _poolConfigs;
 };
 
 #define sAuctionHouseConfig AuctionHouseConfig::Instance()

@@ -231,10 +231,20 @@ float MarketAnalyzer::GetPriceTrend(uint32 itemEntry, AuctionHouseFaction factio
 uint64 MarketAnalyzer::GetMarketValue(uint32 itemEntry, AuctionHouseFaction faction) const
 {
     MarketPriceData data = GetMarketPrice(itemEntry, faction);
-    if (!data.hasData)
+    if (data.hasData)
+        return data.medianBuyout > 0 ? data.medianBuyout : data.avgBuyout;
+
+    // No market data yet (empty economy / fresh server). Fall back to a rough
+    // estimate so the AH bots can operate until live prices are observed.
+    ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemEntry);
+    if (!proto)
         return 0;
 
-    return data.medianBuyout > 0 ? data.medianBuyout : data.avgBuyout;
+    uint64 estimate = proto->BuyPrice;
+    if (estimate == 0)
+        estimate = proto->SellPrice * 4;
+
+    return estimate;
 }
 
 void MarketAnalyzer::DailySnapshot()

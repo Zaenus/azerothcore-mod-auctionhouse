@@ -22,8 +22,8 @@ AuctionHouseBot.UpdateInterval = 300000
 
 # AuctionHouseBot.MaxActiveAuctionsPerBot
 #     Description: Maximum number of active auctions per bot
-#     Default:     50
-AuctionHouseBot.MaxActiveAuctionsPerBot = 50
+#     Default:     150
+AuctionHouseBot.MaxActiveAuctionsPerBot = 150
 
 # AuctionHouseBot.MaxGoldPerBot
 #     Description: Maximum gold a bot can hold (in copper)
@@ -99,5 +99,36 @@ AuctionHouseBot.RelistThresholdHours = 12
 #     Description: Alert/buy if item is below this percentage of market value
 #     Default:     0.50 (50%)
 AuctionHouseBot.UnderpriceThreshold = 0.50
+
+# AuctionHouseBot.Restock.Enabled
+#     Description: Continuously replenish bot inventory so the AH keeps a steady inflow of items
+#     Default:     1 - Enabled
+#                  0 - Disabled
+AuctionHouseBot.Restock.Enabled = 1
+
+# AuctionHouseBot.Restock.MinStockPerBot
+#     Description: Keep at least this many unlisted items in each bot's inventory
+#     Default:     40
+AuctionHouseBot.Restock.MinStockPerBot = 40
+
+# AuctionHouseBot.Restock.MaxPerCycle
+#     Description: Maximum new items added to a bot's inventory per restock cycle
+#     Default:     15
+AuctionHouseBot.Restock.MaxPerCycle = 15
+
+# AuctionHouseBot.Restock.MaxQuality
+#     Description: Maximum item quality the restocker will supply (0=Poor, 1=Common, 2=Uncommon, 3=Rare, 4=Epic)
+#     Default:     3 (Rare)
+AuctionHouseBot.Restock.MaxQuality = 3
+
+# AuctionHouseBot.PriceVariancePercent
+#     Description: Random price jitter applied to listings as percentage of market value
+#     Default:     15.0
+AuctionHouseBot.PriceVariancePercent = 15.0
+
+# AuctionHouseBot.RefillGoldBelow
+#     Description: If a bot's gold drops below this amount (copper) it is refilled back to StartingGoldPerBot
+#     Default:     100000 (10 gold)
+AuctionHouseBot.RefillGoldBelow = 100000
 
 

@@ -19,7 +19,11 @@
 #include "AuctionHouseBotMgr.h"
 #include "MarketAnalyzer.h"
 #include "Config/AuctionHouseConfig.h"
+#include "CharacterDatabase.h"
+#include "Item.h"
 #include "Logging/Log.h"
+#include "Utilities/StringFormat.h"
+#include <algorithm>
 
 void AuctionHouseBotScript::OnAuctionAdd(AuctionHouseObject* ah, AuctionEntry* entry)
 {
@@ -43,6 +47,16 @@ void AuctionHouseBotScript::OnAuctionSuccessful(AuctionHouseObject* ah, AuctionE
         return;
 
     MarketAnalyzer::Instance().RecordSale(ah, entry);
+
+    // Credit the sale proceeds to the bot's virtual wallet so it can keep
+    // paying deposits on future listings
+    if (AuctionHouseBot* bot = sAuctionHouseBotMgr.FindBotByGuid(entry->owner))
+    {
+        uint64 net = entry->bid > entry->GetAuctionCut() ? entry->bid - entry->GetAuctionCut() : 0;
+        uint64 maxGold = sAuctionHouseConfig.GetMaxGoldPerBot();
+        uint64 room = bot->GetGold() < maxGold ? maxGold - bot->GetGold() : 0;
+        bot->AddGold(std::min(net, room));
+    }
 }
 
 void AuctionHouseBotScript::OnAuctionExpire(AuctionHouseObject* ah, AuctionEntry* entry)
@@ -51,6 +65,17 @@ void AuctionHouseBotScript::OnAuctionExpire(AuctionHouseObject* ah, AuctionEntry
         return;
 
     MarketAnalyzer::Instance().RecordExpiry(ah, entry);
+
+    // Return expired goods to the bot's virtual inventory so they get relisted
+    // instead of being lost (the expired-mail is suppressed for bot auctions)
+    if (AuctionHouseBot* bot = sAuctionHouseBotMgr.FindBotByGuid(entry->owner))
+    {
+        CharacterDatabase.Execute(Acore::StringFormat(
+            "INSERT INTO auctionhouse_bot_inventory (bot_guid, item_guid, item_entry, count, acquired_price, acquired_date, listed) "
+            "VALUES ({}, {}, {}, {}, {}, CURDATE(), 0)",
+            bot->GetBotGuid().GetCounter(), entry->item_guid.GetCounter(),
+            entry->item_template, entry->itemCount, entry->buyout));
+    }
 }
 
 void AuctionHouseBotScript::OnBeforeAuctionHouseMgrUpdate()
@@ -59,6 +84,28 @@ void AuctionHouseBotScript::OnBeforeAuctionHouseMgrUpdate()
         return;
 
     sAuctionHouseBotMgr.Update(60000); // Called every minute by AH mgr
+}
+
+void AuctionHouseBotScript::OnBeforeAuctionHouseMgrSendAuctionExpiredMail(AuctionHouseMgr* /*auctionHouseMgr*/, AuctionEntry* auction, Player* /*owner*/, uint32& /*owner_accId*/, bool& /*sendNotification*/, bool& sendMail)
+{
+    if (!sAuctionHouseConfig.IsAHBotEnabled())
+        return;
+
+    // Bot auctions must not mail items back: bots are virtual characters and
+    // the item is re-added to their inventory by OnAuctionExpire instead.
+    // Free the virtual item here so it is not leaked once removed from the AH.
+    if (!auction || !sAuctionHouseBotMgr.FindBotByGuid(auction->owner))
+        return;
+
+    sendMail = false;
+
+    if (Item* item = sAuctionMgr->GetAItem(auction->item_guid))
+    {
+        sAuctionMgr->RemoveAItem(auction->item_guid);
+        delete item;
+        CharacterDatabase.Execute(Acore::StringFormat(
+            "DELETE FROM item_instance WHERE guid = {}", auction->item_guid.GetCounter()));
+    }
 }
 
 void AuctionHouseBotWorldScript::OnUpdate(uint32 diff)

@@ -32,7 +32,8 @@ public:
             AUCTIONHOUSEHOOK_ON_AUCTION_REMOVE,
             AUCTIONHOUSEHOOK_ON_AUCTION_SUCCESSFUL,
             AUCTIONHOUSEHOOK_ON_AUCTION_EXPIRE,
-            AUCTIONHOUSEHOOK_ON_BEFORE_AUCTIONHOUSEMGR_UPDATE
+            AUCTIONHOUSEHOOK_ON_BEFORE_AUCTIONHOUSEMGR_UPDATE,
+            AUCTIONHOUSEHOOK_ON_BEFORE_AUCTIONHOUSEMGR_SEND_AUCTION_EXPIRED_MAIL
         }) {}
 
     void OnAuctionAdd(AuctionHouseObject* ah, AuctionEntry* entry) override;
@@ -40,6 +41,7 @@ public:
     void OnAuctionSuccessful(AuctionHouseObject* ah, AuctionEntry* entry) override;
     void OnAuctionExpire(AuctionHouseObject* ah, AuctionEntry* entry) override;
     void OnBeforeAuctionHouseMgrUpdate() override;
+    void OnBeforeAuctionHouseMgrSendAuctionExpiredMail(AuctionHouseMgr* auctionHouseMgr, AuctionEntry* auction, Player* owner, uint32& owner_accId, bool& sendNotification, bool& sendMail) override;
 };
 
 class AuctionHouseBotWorldScript : public WorldScript

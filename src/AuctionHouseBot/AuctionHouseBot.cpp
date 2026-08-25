@@ -19,6 +19,7 @@
 #include "AuctionHouseBotMgr.h"
 #include "BuyStrategy.h"
 #include "SellStrategy.h"
+#include "RestockStrategy.h"
 #include "Config/AuctionHouseConfig.h"
 #include "AccountMgr.h"
 #include "CharacterDatabase.h"
@@ -46,6 +47,7 @@ void AuctionHouseBot::Initialize()
 
     _buyStrategy = std::make_unique<BuyStrategy>(this);
     _sellStrategy = std::make_unique<SellStrategy>(this);
+    _restockStrategy = std::make_unique<RestockStrategy>(this);
 
     LOG_INFO("modules.auctionhouse", "AH Bot initialized: Faction={}, BotIndex={}, GUID={}, Gold={}",
         static_cast<uint8>(_faction), _botIndex, _botGuid.GetCounter(), _gold);
@@ -127,6 +129,16 @@ void AuctionHouseBot::Update(uint32 diff)
 
     _lastUpdate = now;
 
+    // Keep bots funded: a bot below the configured floor is topped back up to
+    // its starting gold so deposits remain payable (simulates ongoing farming)
+    if (_gold < sAuctionHouseConfig.GetRefillGoldBelow())
+    {
+        LOG_DEBUG("modules.auctionhouse", "AH Bot (Faction={}, Index={}) gold {} below floor {}, refilling to {}",
+            static_cast<uint8>(_faction), _botIndex, _gold,
+            sAuctionHouseConfig.GetRefillGoldBelow(), sAuctionHouseConfig.GetStartingGoldPerBot());
+        _gold = sAuctionHouseConfig.GetStartingGoldPerBot();
+    }
+
     // Refresh active auction count
     AuctionHouseObject* ah = sAuctionMgr->GetAuctionsMapByHouseId(
         _faction == AuctionHouseFaction::Alliance ? AuctionHouseId::Alliance :
@@ -143,6 +155,9 @@ void AuctionHouseBot::Update(uint32 diff)
     }
 
     // Execute buy/sell strategies
+    if (_restockStrategy)
+        _restockStrategy->Execute();
+
     if (_buyStrategy && _gold > 10000)
         _buyStrategy->Execute();
 

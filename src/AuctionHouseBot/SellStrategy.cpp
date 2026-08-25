@@ -24,8 +24,8 @@
 #include "Item.h"
 #include "Logging/Log.h"
 #include "ObjectMgr.h"
-#include "Player.h"
 #include "QueryResult.h"
+#include "Random.h"
 #include "Utilities/StringFormat.h"
 
 SellStrategy::SellStrategy(AuctionHouseBot* bot) : _bot(bot)
@@ -136,6 +136,17 @@ bool SellStrategy::EvaluateItem(uint32 itemEntry, uint32 count, SellCandidate& c
 
     float minSellPercent = sAuctionHouseConfig.GetMinSellPricePercent();
     uint64 minSellPrice = static_cast<uint64>(marketValue * minSellPercent);
+
+    // Randomize prices around the market value so listings don't all cost
+    // the exact same amount (looks far more organic to players)
+    float variance = sAuctionHouseConfig.GetPriceVariancePercent() / 100.0f;
+    if (variance > 0.0f)
+    {
+        float startFactor = frand(1.0f - variance, 1.0f + variance * 0.5f);
+        float buyoutFactor = frand(1.0f, 1.0f + variance);
+        marketValue = std::max<uint64>(1, static_cast<uint64>(marketValue * startFactor));
+        minSellPrice = std::max<uint64>(marketValue, static_cast<uint64>(minSellPrice * buyoutFactor));
+    }
 
     // Calculate deposit
     AuctionHouseEntry const* ahEntry = AuctionHouseMgr::GetAuctionHouseEntryFromHouse(

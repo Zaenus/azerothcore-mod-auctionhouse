@@ -17,10 +17,13 @@
 
 #include "AuctionHouseConfig.h"
 #include "Config.h"
+#include "AuctionHouseBot/RestockStrategy.h"
 
-void AuctionHouseConfig::Initialize(bool /*reload*/)
+void AuctionHouseConfig::Initialize(bool reload)
 {
     LoadAHBotConfig();
+    if (reload)
+        RestockStrategy::InvalidatePool();
 }
 
 void AuctionHouseConfig::LoadAHBotConfig()
@@ -37,7 +40,7 @@ void AuctionHouseConfig::LoadAHBotConfig()
     _minItemLevel = sConfigMgr->GetOption<uint32>("AuctionHouseBot.MinItemLevel", 1);
     _maxItemLevel = sConfigMgr->GetOption<uint32>("AuctionHouseBot.MaxItemLevel", 277);
 
-    std::string allowedClasses = sConfigMgr->GetOption<std::string>("AuctionHouseBot.AllowedItemClasses", "2,4,7,11");
+    std::string allowedClasses = sConfigMgr->GetOption<std::string>("AuctionHouseBot.AllowedItemClasses", "0,1,2,3,4,5,7,9,15,16");
     _allowedItemClasses = ParseCSVUInt32(allowedClasses);
 
     std::string blacklisted = sConfigMgr->GetOption<std::string>("AuctionHouseBot.BlacklistedItems", "");
@@ -54,7 +57,9 @@ void AuctionHouseConfig::LoadAHBotConfig()
     _restockMaxPerCycle = sConfigMgr->GetOption<uint32>("AuctionHouseBot.Restock.MaxPerCycle", 15);
     _restockMaxQuality = sConfigMgr->GetOption<uint32>("AuctionHouseBot.Restock.MaxQuality", 3);
     _priceVariancePercent = sConfigMgr->GetOption<float>("AuctionHouseBot.PriceVariancePercent", 15.0f);
-    _refillGoldBelow = sConfigMgr->GetOption<uint64>("AuctionHouseBot.RefillGoldBelow", 100000);
+    _refillGoldBelow = sConfigMgr->GetOption<uint64>("AuctionHouseBot.RefillGoldBelow", 500000);
+    _restockAllowBoE = sConfigMgr->GetOption<bool>("AuctionHouseBot.Restock.AllowBoE", true);
+    _restockEpicChance = sConfigMgr->GetOption<float>("AuctionHouseBot.Restock.EpicChance", 0.05f);
 }
 
 std::set<uint32> AuctionHouseConfig::ParseCSVUInt32(const std::string& str) const

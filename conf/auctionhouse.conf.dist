@@ -66,9 +66,9 @@ AuctionHouseBot.MinItemLevel = 1
 AuctionHouseBot.MaxItemLevel = 277
 
 # AuctionHouseBot.AllowedItemClasses
-#     Description: Comma-separated item classes bot can trade (2=Consumables, 4=Armor, 7=Trade Goods, 11=Misc)
-#     Default:     "2,4,7,11"
-AuctionHouseBot.AllowedItemClasses = "2,4,7,11"
+#     Description: Comma-separated item classes bot can trade (0=Consumable, 1=Container, 2=Weapon, 3=Gem, 4=Armor, 5=Reagent, 7=TradeGoods, 9=Recipe, 15=Misc(mounts/pets), 16=Glyph)
+#     Default:     "0,1,2,3,4,5,7,9,15,16"
+AuctionHouseBot.AllowedItemClasses = "0,1,2,3,4,5,7,9,15,16"
 
 # AuctionHouseBot.BlacklistedItems
 #     Description: Comma-separated item entries to never trade
@@ -128,7 +128,17 @@ AuctionHouseBot.PriceVariancePercent = 15.0
 
 # AuctionHouseBot.RefillGoldBelow
 #     Description: If a bot's gold drops below this amount (copper) it is refilled back to StartingGoldPerBot
-#     Default:     100000 (10 gold)
-AuctionHouseBot.RefillGoldBelow = 100000
+#     Default:     500000 (50 gold) - higher to cover epic deposits
+AuctionHouseBot.RefillGoldBelow = 500000
+
+# AuctionHouseBot.Restock.AllowBoE
+#     Description: Allow Bind-on-Equip items (in addition to NO_BIND) for wearables/weapons. 0 = NO_BIND only.
+#     Default:     1
+AuctionHouseBot.Restock.AllowBoE = 1
+
+# AuctionHouseBot.Restock.EpicChance
+#     Description: Chance (0.0-1.0) that an occasional Epic (quality 4) is stocked even when MaxQuality=3. Keeps ~5% epics visible.
+#     Default:     0.05
+AuctionHouseBot.Restock.EpicChance = 0.05
 
 

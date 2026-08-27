@@ -29,6 +29,7 @@ struct SellCandidate
 {
     uint32 itemEntry = 0;
     uint32 itemCount = 0;
+    uint64 itemGuid = 0;
     uint64 marketValue = 0;
     uint64 minSellPrice = 0;
     uint64 deposit = 0;

@@ -95,6 +95,8 @@ public:
     uint32 GetRestockMaxQuality() const { return _restockMaxQuality; }
     float GetPriceVariancePercent() const { return _priceVariancePercent; }
     uint64 GetRefillGoldBelow() const { return _refillGoldBelow; }
+    bool GetRestockAllowBoE() const { return _restockAllowBoE; }
+    float GetRestockEpicChance() const { return _restockEpicChance; }
 
 private:
     AuctionHouseConfig() = default;
@@ -117,7 +119,7 @@ private:
     uint32 _priceHistoryDays = 30;
     uint32 _minItemLevel = 1;
     uint32 _maxItemLevel = 277;
-    std::set<uint32> _allowedItemClasses = {2, 4, 7, 11};
+    std::set<uint32> _allowedItemClasses = {0, 1, 2, 3, 4, 5, 7, 9, 15, 16};
     std::set<uint32> _blacklistedItems;
     std::string _botAccountPrefix = "AHBot_";
     uint32 _botCountPerFaction = 1;
@@ -132,6 +134,8 @@ private:
     uint32 _restockMaxQuality = 3;
     float _priceVariancePercent = 15.0f;
     uint64 _refillGoldBelow = 100000;
+    bool _restockAllowBoE = true;
+    float _restockEpicChance = 0.05f;
 };
 
 #define sAuctionHouseConfig AuctionHouseConfig::Instance()

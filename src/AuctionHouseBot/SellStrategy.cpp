@@ -73,10 +73,8 @@ void SellStrategy::Execute()
 
 void SellStrategy::ScanInventory(std::vector<SellCandidate>& candidates)
 {
-    // In a real implementation, this would scan the bot's actual inventory
-    // For now, we'll use the bot inventory database table
     std::string query = Acore::StringFormat(
-        "SELECT item_entry, count, listed FROM auctionhouse_bot_inventory WHERE bot_guid = {} AND listed = 0",
+        "SELECT item_guid, item_entry, count, listed FROM auctionhouse_bot_inventory WHERE bot_guid = {} AND listed = 0",
         _bot->GetBotGuid().GetCounter());
 
     QueryResult result = CharacterDatabase.Query(query);
@@ -91,9 +89,10 @@ void SellStrategy::ScanInventory(std::vector<SellCandidate>& candidates)
     {
         Field* fields = result->Fetch();
 
-        uint32 itemEntry = fields[0].Get<uint32>(); // item_entry
-        uint32 count = fields[1].Get<uint32>();     // count
-        uint8 listed = fields[2].Get<uint8>();      // listed
+        uint64 itemGuid = fields[0].Get<uint64>();  // item_guid
+        uint32 itemEntry = fields[1].Get<uint32>(); // item_entry
+        uint32 count = fields[2].Get<uint32>();     // count
+        uint8 listed = fields[3].Get<uint8>();      // listed
 
         // Skip already listed items
         if (listed)
@@ -117,8 +116,10 @@ void SellStrategy::ScanInventory(std::vector<SellCandidate>& candidates)
             continue;
 
         SellCandidate candidate;
+        candidate.itemGuid = itemGuid;
         if (EvaluateItem(itemEntry, count, candidate))
         {
+            // Preserve the original item_guid for precise inventory deletion
             candidates.push_back(candidate);
         }
     } while (result->NextRow());
@@ -231,10 +232,19 @@ bool SellStrategy::ListItem(const SellCandidate& candidate)
     auction->SaveToDB(trans);
     CharacterDatabase.CommitTransaction(trans);
 
-    // Item is now listed on the AH, remove it from the bot's virtual inventory
-    CharacterDatabase.Execute(Acore::StringFormat(
-        "DELETE FROM auctionhouse_bot_inventory WHERE bot_guid = {} AND item_entry = {} AND listed = 0",
-        _bot->GetBotGuid().GetCounter(), candidate.itemEntry));
+    // Item is now listed on the AH, remove it from the bot's virtual inventory (precise, single row)
+    if (candidate.itemGuid != 0)
+    {
+        CharacterDatabase.Execute(Acore::StringFormat(
+            "DELETE FROM auctionhouse_bot_inventory WHERE bot_guid = {} AND item_guid = {}",
+            _bot->GetBotGuid().GetCounter(), candidate.itemGuid));
+    }
+    else
+    {
+        CharacterDatabase.Execute(Acore::StringFormat(
+            "DELETE FROM auctionhouse_bot_inventory WHERE bot_guid = {} AND item_entry = {} AND listed = 0 LIMIT 1",
+            _bot->GetBotGuid().GetCounter(), candidate.itemEntry));
+    }
 
     LOG_INFO("modules.auctionhouse",
         "AH Bot listing item {} x{} for {} copper (market: {}, deposit: {})",

@@ -39,9 +39,11 @@ public:
 
     // Shared pool of eligible item entries, built once and reused by all bots
     static std::vector<RestockEntry> const& GetEligiblePool();
+    static void InvalidatePool();
 
 private:
     uint32 CountUnlistedStock() const;
+    static RestockEntry PickWeightedEntry();
 
     AuctionHouseBot* _bot = nullptr;
 };

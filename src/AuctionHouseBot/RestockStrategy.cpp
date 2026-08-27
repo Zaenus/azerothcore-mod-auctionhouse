@@ -27,57 +27,153 @@
 #include "Utilities/StringFormat.h"
 #include <mutex>
 
-std::vector<RestockEntry> const& RestockStrategy::GetEligiblePool()
+namespace
 {
-    static std::vector<RestockEntry> pool;
-    static std::once_flag poolOnce;
+    struct WeightedPools
+    {
+        std::vector<RestockEntry> byClass[17];
+        std::vector<RestockEntry> epicPool;
+        std::vector<RestockEntry> normalPool;
+        size_t totalNormal = 0;
+    };
 
-    std::call_once(poolOnce, []()
+    WeightedPools g_pools;
+    std::once_flag g_poolOnce;
+    std::mutex g_poolMutex;
+    bool g_poolBuilt = false;
+
+    void BuildPools()
     {
         auto const& allowedClasses = sAuctionHouseConfig.GetAllowedItemClasses();
         auto const& blacklisted = sAuctionHouseConfig.GetBlacklistedItems();
-
         uint32 maxQuality = sAuctionHouseConfig.GetRestockMaxQuality();
+        bool allowBoE = sAuctionHouseConfig.GetRestockAllowBoE();
 
         for (auto const& [entry, proto] : *sObjectMgr->GetItemTemplateStore())
         {
-            // Skip blacklisted items
             if (blacklisted.count(entry))
                 continue;
-
-            // Respect configured item classes
             if (!allowedClasses.empty() && !allowedClasses.count(proto.Class))
                 continue;
-
-            // Respect configured item level range
             if (proto.ItemLevel < sAuctionHouseConfig.GetMinItemLevel() ||
                 proto.ItemLevel > sAuctionHouseConfig.GetMaxItemLevel())
                 continue;
 
-            // Quality cap (0=Poor .. 3=Rare by default) to keep the market believable
-            if (proto.Quality > maxQuality)
+            // Quality handling: normal up to maxQuality, epic (4) is gated by EpicChance
+            bool isEpic = proto.Quality == 4; // ITEM_QUALITY_EPIC
+            if (proto.Quality > maxQuality && !isEpic)
+                continue;
+            if (isEpic && proto.Quality > 4)
                 continue;
 
-            // Only unbound items can realistically appear on the AH in volume
-            if (proto.Bonding != NO_BIND)
+            // Bonding: allow BoE if configured, otherwise only NO_BIND
+            // Disallow BoP and Quest binds; allow NO_BIND, BIND_WHEN_EQUIPPED, BIND_WHEN_USE
+            if (proto.Bonding == BIND_WHEN_PICKED_UP || proto.Bonding == BIND_QUEST_ITEM || proto.Bonding == BIND_QUEST_ITEM1)
+                continue;
+            if (!allowBoE && proto.Bonding != NO_BIND)
                 continue;
 
-            // No conjured goods
             if (proto.HasFlag(ITEM_FLAG_CONJURED))
                 continue;
 
-            // Must have a usable value estimate, otherwise SellStrategy would reject it anyway
             uint64 estimate = proto.BuyPrice > 0 ? static_cast<uint64>(proto.BuyPrice) : proto.SellPrice * 4ull;
             if (estimate == 0)
                 continue;
 
-            pool.push_back({ entry, proto.GetMaxStackSize() });
+            // Skip deprecated / test items with empty names or zero display
+            if (proto.Class >= 17)
+                continue;
+
+            RestockEntry e{ entry, proto.GetMaxStackSize() };
+            if (proto.Class < 17)
+                g_pools.byClass[proto.Class].push_back(e);
+
+            if (isEpic)
+                g_pools.epicPool.push_back(e);
+            else
+                g_pools.normalPool.push_back(e);
         }
 
-        LOG_INFO("modules.auctionhouse", "AH Bot restock pool built with {} eligible item entries", pool.size());
-    });
+        g_pools.totalNormal = g_pools.normalPool.size();
+        g_poolBuilt = true;
+        LOG_INFO("modules.auctionhouse", "AH Bot restock pools built: normal={} epic={} totalByClass (0:{},1:{},2:{},3:{},4:{},5:{},7:{},9:{},15:{},16:{})",
+            g_pools.normalPool.size(), g_pools.epicPool.size(),
+            g_pools.byClass[0].size(), g_pools.byClass[1].size(), g_pools.byClass[2].size(),
+            g_pools.byClass[3].size(), g_pools.byClass[4].size(), g_pools.byClass[5].size(),
+            g_pools.byClass[7].size(), g_pools.byClass[9].size(), g_pools.byClass[15].size(), g_pools.byClass[16].size());
+    }
+}
 
-    return pool;
+std::vector<RestockEntry> const& RestockStrategy::GetEligiblePool()
+{
+    std::call_once(g_poolOnce, BuildPools);
+    // Return legacy combined pool for backwards compat (normal + epic if chance)
+    static std::vector<RestockEntry> combined;
+    static std::once_flag combinedOnce;
+    std::call_once(combinedOnce, []()
+    {
+        combined.reserve(g_pools.normalPool.size() + g_pools.epicPool.size());
+        combined.insert(combined.end(), g_pools.normalPool.begin(), g_pools.normalPool.end());
+        combined.insert(combined.end(), g_pools.epicPool.begin(), g_pools.epicPool.end());
+    });
+    return combined;
+}
+
+void RestockStrategy::InvalidatePool()
+{
+    std::lock_guard<std::mutex> lock(g_poolMutex);
+    if (g_poolBuilt)
+    {
+        for (auto& v : g_pools.byClass)
+            v.clear();
+        g_pools.epicPool.clear();
+        g_pools.normalPool.clear();
+        g_poolBuilt = false;
+        BuildPools();
+    }
+}
+
+RestockEntry RestockStrategy::PickWeightedEntry()
+{
+    std::call_once(g_poolOnce, BuildPools);
+
+    float epicChance = sAuctionHouseConfig.GetRestockEpicChance();
+    if (!g_pools.epicPool.empty() && epicChance > 0.0f && roll_chance_f(epicChance * 100.0f))
+        return g_pools.epicPool[urand(0, static_cast<uint32>(g_pools.epicPool.size() - 1))];
+
+    // Weighted by class: 0 Consumable 20, 1 Container 2, 2 Weapon 15, 3 Gem 10, 4 Armor 15, 5 Reagent 5, 7 TradeGoods 25, 9 Recipe 5, 15 Misc 5 (mounts/pets), 16 Glyph 10
+    // Total 112 -> normalize via roll
+    struct Weight { uint32 cls; uint32 w; };
+    static const Weight weights[] = {
+        {0, 20}, {1, 2}, {2, 15}, {3, 10}, {4, 15}, {5, 5}, {7, 25}, {9, 5}, {15, 5}, {16, 10}
+    };
+    uint32 totalW = 0;
+    for (auto const& wt : weights)
+        if (!g_pools.byClass[wt.cls].empty())
+            totalW += wt.w;
+
+    if (totalW == 0)
+    {
+        // Fallback to normal pool uniform
+        if (!g_pools.normalPool.empty())
+            return g_pools.normalPool[urand(0, static_cast<uint32>(g_pools.normalPool.size() - 1))];
+        return {0, 1};
+    }
+
+    uint32 roll = urand(1, totalW);
+    uint32 acc = 0;
+    for (auto const& wt : weights)
+    {
+        auto const& vec = g_pools.byClass[wt.cls];
+        if (vec.empty())
+            continue;
+        acc += wt.w;
+        if (roll <= acc)
+            return vec[urand(0, static_cast<uint32>(vec.size() - 1))];
+    }
+
+    // Fallback
+    return g_pools.normalPool[urand(0, static_cast<uint32>(g_pools.normalPool.size() - 1))];
 }
 
 RestockStrategy::RestockStrategy(AuctionHouseBot* bot) : _bot(bot)
@@ -112,7 +208,9 @@ void RestockStrategy::Execute()
 
     for (uint32 i = 0; i < toAdd; ++i)
     {
-        RestockEntry const& restockEntry = pool[urand(0, pool.size() - 1)];
+        RestockEntry restockEntry = PickWeightedEntry();
+        if (restockEntry.itemEntry == 0)
+            continue;
 
         ItemTemplate const* proto = sObjectMgr->GetItemTemplate(restockEntry.itemEntry);
         if (!proto)

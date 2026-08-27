@@ -86,6 +86,22 @@ AuctionHouseBot* AuctionHouseBotMgr::GetBot(AuctionHouseFaction faction, uint32 
     return _bots[f][index].get();
 }
 
+AuctionHouseBot* AuctionHouseBotMgr::FindBotByGuid(ObjectGuid guid)
+{
+    std::lock_guard lock(_botsLock);
+
+    for (auto const& factionBots : _bots)
+    {
+        for (auto const& bot : factionBots)
+        {
+            if (bot && bot->GetBotGuid() == guid)
+                return bot.get();
+        }
+    }
+
+    return nullptr;
+}
+
 size_t AuctionHouseBotMgr::GetBotCount(AuctionHouseFaction faction) const
 {
     std::lock_guard lock(_botsLock);

@@ -39,6 +39,7 @@ public:
     void CreateDefaultBots();
 
     AuctionHouseBot* GetBot(AuctionHouseFaction faction, uint32 index = 0);
+    AuctionHouseBot* FindBotByGuid(ObjectGuid guid);
     size_t GetBotCount(AuctionHouseFaction faction) const;
 
 private:

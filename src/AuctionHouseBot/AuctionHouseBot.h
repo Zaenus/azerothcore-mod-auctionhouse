@@ -26,6 +26,7 @@
 class AuctionHouseBotMgr;
 class BuyStrategy;
 class SellStrategy;
+class RestockStrategy;
 
 class AuctionHouseBot
 {
@@ -64,6 +65,7 @@ private:
 
     std::unique_ptr<BuyStrategy> _buyStrategy;
     std::unique_ptr<SellStrategy> _sellStrategy;
+    std::unique_ptr<RestockStrategy> _restockStrategy;
 };
 
 #endif

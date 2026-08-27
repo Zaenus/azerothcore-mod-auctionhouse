@@ -15,39 +15,35 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MOD_AUCTIONHOUSE_SELL_STRATEGY_H_
-#define MOD_AUCTIONHOUSE_SELL_STRATEGY_H_
+#ifndef MOD_AUCTIONHOUSE_RESTOCK_STRATEGY_H_
+#define MOD_AUCTIONHOUSE_RESTOCK_STRATEGY_H_
 
 #include "Common.h"
-#include "AuctionHouseMgr.h"
-#include "MarketAnalyzer.h"
 #include <vector>
 
 class AuctionHouseBot;
 
-struct SellCandidate
+struct RestockEntry
 {
     uint32 itemEntry = 0;
-    uint32 itemCount = 0;
-    uint64 itemGuid = 0;
-    uint64 marketValue = 0;
-    uint64 minSellPrice = 0;
-    uint64 deposit = 0;
-    uint32 duration = 0; // in minutes (12, 24, 48)
+    uint32 maxStack = 1;
 };
 
-class SellStrategy
+class RestockStrategy
 {
 public:
-    explicit SellStrategy(AuctionHouseBot* bot);
-    ~SellStrategy() = default;
+    explicit RestockStrategy(AuctionHouseBot* bot);
+    ~RestockStrategy() = default;
 
     void Execute();
 
+    // Shared pool of eligible item entries, built once and reused by all bots
+    static std::vector<RestockEntry> const& GetEligiblePool();
+    static void InvalidatePool();
+
 private:
-    void ScanInventory(std::vector<SellCandidate>& candidates);
-    bool EvaluateItem(uint32 itemEntry, uint32 count, SellCandidate& candidate);
-    bool ListItem(const SellCandidate& candidate);
+    uint32 CountUnlistedStock() const;
+    static RestockEntry PickWeightedEntry();
 
     AuctionHouseBot* _bot = nullptr;
 };

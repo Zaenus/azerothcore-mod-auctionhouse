@@ -46,6 +46,13 @@ enum class AHBotConfig
     RELIST_THRESHOLD_HOURS,
     UNDERPRICE_THRESHOLD,
 
+    RESTOCK_ENABLED,
+    RESTOCK_MIN_STOCK_PER_BOT,
+    RESTOCK_MAX_PER_CYCLE,
+    RESTOCK_MAX_QUALITY,
+    PRICE_VARIANCE_PERCENT,
+    REFILL_GOLD_BELOW,
+
     NUM_CONFIGS
 };
 
@@ -81,6 +88,16 @@ public:
     uint32 GetRelistThresholdHours() const { return _relistThresholdHours; }
     float GetUnderpriceThreshold() const { return _underpriceThreshold; }
 
+    // Restock config getters
+    bool IsRestockEnabled() const { return _restockEnabled; }
+    uint32 GetRestockMinStockPerBot() const { return _restockMinStockPerBot; }
+    uint32 GetRestockMaxPerCycle() const { return _restockMaxPerCycle; }
+    uint32 GetRestockMaxQuality() const { return _restockMaxQuality; }
+    float GetPriceVariancePercent() const { return _priceVariancePercent; }
+    uint64 GetRefillGoldBelow() const { return _refillGoldBelow; }
+    bool GetRestockAllowBoE() const { return _restockAllowBoE; }
+    float GetRestockEpicChance() const { return _restockEpicChance; }
+
 private:
     AuctionHouseConfig() = default;
     ~AuctionHouseConfig() = default;
@@ -93,7 +110,7 @@ private:
     // AH Bot config
     bool _ahBotEnabled = true;
     uint32 _updateInterval = 300000;
-    uint32 _maxActiveAuctionsPerBot = 50;
+    uint32 _maxActiveAuctionsPerBot = 150;
     uint64 _maxGoldPerBot = 10000000;
     uint64 _startingGoldPerBot = 1000000;
     float _minProfitMargin = 0.15f;
@@ -102,13 +119,23 @@ private:
     uint32 _priceHistoryDays = 30;
     uint32 _minItemLevel = 1;
     uint32 _maxItemLevel = 277;
-    std::set<uint32> _allowedItemClasses = {2, 4, 7, 11};
+    std::set<uint32> _allowedItemClasses = {0, 1, 2, 3, 4, 5, 7, 9, 15, 16};
     std::set<uint32> _blacklistedItems;
     std::string _botAccountPrefix = "AHBot_";
     uint32 _botCountPerFaction = 1;
     uint32 _maxItemsPerCycle = 20;
     uint32 _relistThresholdHours = 12;
     float _underpriceThreshold = 0.50f;
+
+    // Restock config
+    bool _restockEnabled = true;
+    uint32 _restockMinStockPerBot = 40;
+    uint32 _restockMaxPerCycle = 15;
+    uint32 _restockMaxQuality = 3;
+    float _priceVariancePercent = 15.0f;
+    uint64 _refillGoldBelow = 100000;
+    bool _restockAllowBoE = true;
+    float _restockEpicChance = 0.05f;
 };
 
 #define sAuctionHouseConfig AuctionHouseConfig::Instance()
